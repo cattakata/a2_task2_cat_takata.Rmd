@@ -105,7 +105,14 @@ blr_fitted <- palmetto_blr %>%
   mutate(correct_classify = case_when(
     species_name == model_prediction ~ "correct",
     TRUE ~ "incorrect"
-  ))
+  )) %>% 
+  select(species_name, correct_classify) %>% 
+  group_by(species_name, correct_classify) %>% 
+  summarise(number_correct = n()) %>% 
+  pivot_wider(names_from = correct_classify,
+              values_from = number_correct) %>% 
+  mutate(percent_correct = correct/(correct+incorrect)*100)
+
 ```
 
 
