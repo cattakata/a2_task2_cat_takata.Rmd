@@ -37,7 +37,11 @@ palmetto <- read_csv(here("data", "palmetto.csv"),
 
 palmetto_species <- palmetto %>% 
   select(species, height, length, width, green_lvs) %>% 
-  mutate(species = factor(species)) %>% 
+  mutate(species_name = case_when(
+    species %in% "1" ~ "Serenoa repens",
+    species %in% "2" ~ "Sabal etonia"
+  )) %>% 
+  mutate(species_name = factor(species_name)) %>% 
   mutate(length = as.numeric(length)) %>% 
   mutate(width = as.numeric(width)) %>% 
   mutate(green_lvs = as.numeric(green_lvs))
@@ -48,17 +52,30 @@ A section containing 2 - 3 finalized data visualizations (with figure captions) 
 
 ```{r}
 ggplot(data = palmetto_species, aes(x = height, y = length)) + 
-  geom_point(aes(color = species))
+  geom_point(aes(color = species_name))
 
 ggplot(data = palmetto_species, aes(x = height, y = width)) +
-  geom_point(aes(color = species))
+  geom_point(aes(color = species_name))
 ```
 
 A section in which you perform binary logistic regression using plant height, canopy length, canopy width and green leaves as predictor variables to understand how they relate to probability of a plant being Serenoa repens or Sabal etonia 
 
+The output should be a finalized table containing the binary logistic regression model results (at least coefficients, standard errors for the coefficients, and information for significance - consider using broom::tidy() to get you most of the way). 
+
+
 
 ```{r}
+palmetto_blr <- glm(species_name ~ height + length + width + green_lvs, 
+                    data = palmetto_species, 
+                    family = "binomial")
+```
 
+
+
+
+```{r}
+blr_fitted <- palmetto_blr %>% 
+  broom::augment(type.predit = "response")
 ```
 
 
