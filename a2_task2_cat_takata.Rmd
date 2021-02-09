@@ -5,14 +5,15 @@ date: "2/7/2021"
 output: 
   html_document:
     theme: flatly
-    toc: true
-    toc_float: true
     code_folding: hide 
 ---
 
-### Overview
-Data source: Abrahamson, W.G. 2019. Survival, growth and biomass estimates of two dominant palmetto species of south-central Florida from 1981 - 2017, ongoing at 5-year 
+## **Overview**
 
+By manipulating the Florida palmetto data, we can utilize binary logistic regression to isolate plant height (height), canopy length (length), canopy width (width), and number of green leaves (green_lvs) to classify whether a palmetto is species Serenoa repens or Sabal etonia.
+
+
+**Data source**: Abrahamson, W.G. 2019. Survival, growth and biomass estimates of two dominant palmetto species of south-central Florida from 1981 - 2017, ongoing at 5-year 
 
 
 ```{r setup, include=FALSE}
@@ -40,6 +41,9 @@ palmetto <- read_csv(here("data", "palmetto.csv"),
 
 ```{r}
 # Data wrangle to isolate specified variables 
+# Use select() to pull columns to create a new dataset 
+# Mutate() or "add" new columns of data 
+# Use as.numeric to create "numeric" data classes that can be used to calculating blr 
 
 palmetto_species <- palmetto %>% 
   select(species, height, length, width, green_lvs) %>% 
@@ -54,48 +58,98 @@ palmetto_species <- palmetto %>%
   
 ```
 
-A section containing 2 - 3 finalized data visualizations (with figure captions) in which you explore differences in height, canopy length, canopy width, and green leaves for the two species. Add a figure caption to each. Below each data visualization, add a short (~1 sentence) statement with a takeaway from the visualization.
 
-```{r}
+## **Data Visualization Exploration** 
+
+Data visualizations exploring differences in height, canopy length, canopy width, and green leaves for Serenoa repens or Sabal etonia. 
+
+```{r, warning=F, message=F}
 ggplot(data = palmetto_species, aes(x = height, y = length)) +
-  geom_point(aes(color = species_name)) +
-  facet_wrap(~species_name)
+  geom_point(aes(color = species_name), show.legend = F) +
+  facet_wrap(~species_name) +
+  theme_bw() +
+  labs(
+    title = "Palmetto Height and Length Comparison (1981 - 2017)",
+    caption = "Figure 1",
+    x = "Height (cm)",
+    y = "Canopy Length (cm)"
+  )
 ```
 
+**Figure 1**: The height and canopy length of Palmetto species (1991-2017). Data: Abrahamson (2019).
 
-```{r}
-ggplot(data = palmetto_species, aes(x = height, y = width)) +
-  geom_point(aes(color = species_name)) +
-  facet_wrap(~species_name)
+The height and canopy length of the two species of Palmetto have similar positive trends and data spread. 
+
+
+```{r, warning=F, message=F}
+ggplot(data = palmetto_species, aes(x = width, y = length)) +
+  geom_point(aes(color = species_name), show.legend = F) +
+  facet_wrap(~species_name) +
+  theme_bw() +
+  labs(
+    title = "Palmetto Height and Width Comparison (1981 - 2017)",
+    caption = "Figure 2",
+    x = "Canopy Width (cm)",
+    y = "Canopy Length (cm)"
+  )
 ```
 
-A section in which you perform binary logistic regression using plant height, canopy length, canopy width and green leaves as predictor variables to understand how they relate to probability of a plant being Serenoa repens or Sabal etonia 
+**Figure 2**: The height and canopy width of Palmetto species (1991-2017). Data: Abrahamson (2019).
 
-The output should be a finalized table containing the binary logistic regression model results (at least coefficients, standard errors for the coefficients, and information for significance - consider using broom::tidy() to get you most of the way). 
+The height and canopy width have positivley skewed data, trending upwards. Both have a strict cutoff, almost a linear relationship on its lower value observations. 
 
+
+```{r, warning = F, message=F}
+ggplot(data = palmetto_species, aes(x = width, y = green_lvs)) +
+  geom_point(aes(color = species_name), show.legend = F) +
+  facet_wrap(~species_name) +
+  theme_bw() +
+  labs(
+    title = "Palmetto Canopy Width and Number of Green Leaves Comparison (1981 - 2017)",
+    caption = "Figure 3",
+    x = "Width (cm)",
+    y = "Number of Green Leaves"
+  )
+```
+
+**Figure 3**: The canopy width and number of green leaves of Palmetto species (1991-2017). Data: Abrahamson (2019).
+
+There is little to no correlation between the canopy width and green leaves of the two species, with Sabal etonia experiencing significantly lower numbers of green leaves as compared to Serenoa repens. 
+
+
+
+## **Binary Linear Regression** 
+We use binary logistic regression of plant height, canopy length, canopy width, and green leaves as predictor variables to understand how they relate to probability of a plant being Serenoa repens or Sabal etonia 
 
 
 ```{r}
 palmetto_blr <- glm(species_name ~ height + length + width + green_lvs, 
                     data = palmetto_species, 
                     family = "binomial")
-
-summary(palmetto_blr)
 ```
 
-```{r}
-blr_tidy <- broom::tidy(palmetto_blr)
+**Table 1**: Results of the binary logistic regression model based on plant height, canopy length, canopy width, and green leaves predicator variables.
+
+```{r, warning=F, message=F}
+# Use broom::tidy() to clean and simplify the data in order to present in a table 
+
+blr_tidy <- broom::tidy(palmetto_blr) %>% 
+  mutate(p.value = case_when(
+    p.value < 0.0001 ~ "<0.0001"
+  ))
 
 kbl(blr_tidy,
-    scientific = TRUE,
-    digits = getOption("digits", 3),
     col.names = c("", "Estimate", "Standard Error", "Statistic", "p - value") ) %>% 
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
   
 ```
 
+**Table 2**: Classification of Palmetto species based on results of binary logisitc regression of predictor variable. For species Sabal etonia and Serenoa repens, there is a correctly classified percentage of 92.62% and 90.77%, respectively, after qualifying a >= 50% cutoff. 
 
-```{r}
+```{r, warning=F, message=F}
+# Use broom::augment() to create a tidy summary of the data in a neat table. 
+# Use case_when() as an if/else statement to isolate inequalitites of >= 0.50 in order to classify species predicted. 
+
 blr_fitted <- palmetto_blr %>% 
   broom::augment(type.predict = "response") %>% 
   mutate(model_prediction = case_when(
@@ -112,6 +166,12 @@ blr_fitted <- palmetto_blr %>%
   pivot_wider(names_from = correct_classify,
               values_from = number_correct) %>% 
   mutate(percent_correct = correct/(correct+incorrect)*100)
+
+# Use kbl() to create a neat table, rename titles, and order data 
+
+kbl(blr_fitted,
+    col.names = c("", "Number Correctly Predicted", "Number Incorrectly Predicted", "Percent Correct")) %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
 
 ```
 
